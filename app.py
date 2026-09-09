@@ -17,11 +17,9 @@ ROOT = Path(__file__).resolve().parent
 GPX_PATH = ROOT / "data" / "ladakh-marathon-full.gpx"
 STATIC = ROOT / "static"
 
-# Climb-equivalent flat distance: +1 km per 100 m gain (Naismith-inspired running rule of thumb).
-# Descent credit: −0.3 km per 100 m drop (capped so net adjustment never goes negative).
 CLIMB_EQ_M_PER_KM = 100.0
-DESCENT_EQ_M_PER_KM = 100.0 / 0.3  # ~333 m drop ≈ −1 km flat
-MODEL_NAME = "Naismith-inspired climb-equivalent ( +1 km flat per 100 m gain; −0.3 km per 100 m drop )"
+DESCENT_EQ_M_PER_KM = 100.0 / 0.3
+MODEL_NAME = "Naismith-inspired climb-equivalent ( +1 km flat per 100 m gain; -0.3 km per 100 m drop )"
 
 app = FastAPI(title="Ladakh Pace", version="1.0.0")
 
@@ -90,7 +88,6 @@ def parse_gpx(path: Path) -> dict[str, Any]:
     smooth_eles = _smooth(raw_eles, 7)
     gain, loss = _gain_loss(smooth_eles, 3.0)
 
-    # Downsample profile for chart (~every 50 m or max ~600 pts)
     step = max(1, len(raw) // 600)
     profile = []
     for i in range(0, len(raw), step):
@@ -114,7 +111,6 @@ def parse_gpx(path: Path) -> dict[str, Any]:
             }
         )
 
-    # km splits using smoothed elevation
     splits = []
     total_km = dist_m[-1] / 1000.0
     n_full = int(math.floor(total_km))
@@ -123,7 +119,6 @@ def parse_gpx(path: Path) -> dict[str, Any]:
         target = km * 1000.0
         while idx < len(dist_m) - 1 and dist_m[idx] < target:
             idx += 1
-        # find start of this km
         start_target = (km - 1) * 1000.0
         j = 0
         while j < len(dist_m) - 1 and dist_m[j] < start_target:
@@ -140,7 +135,6 @@ def parse_gpx(path: Path) -> dict[str, Any]:
                 "grade_pct": round((delta / 1000.0) * 100.0, 2),
             }
         )
-    # final partial km
     if total_km - n_full > 0.05:
         j = 0
         start_target = n_full * 1000.0
@@ -180,10 +174,10 @@ def parse_gpx(path: Path) -> dict[str, Any]:
         "gpx_file": str(path.name),
         "source": {
             "geometry": (
-                "Official Google My Map “Marathon Route Map 2023” "
-                "(https://www.google.com/maps/d/viewer?mid=1ORlfguX-RGVZa1JoPdjpy42ERWo), "
+                "Official Google My Map Marathon Route Map 2023, "
                 "embedded on ladakhmarathon.projectsclique.com race page"
             ),
+            "map_url": "https://www.google.com/maps/d/viewer?mid=1ORlfguX-RGVZa1JoPdjpy42ERWo",
             "elevation": "OpenTopoData Mapzen DEM lookup on densified course vertices",
             "official_distance_km": 42.195,
         },
@@ -197,11 +191,10 @@ def course() -> dict[str, Any]:
 
 def equivalent_flat_km(distance_km: float, gain_m: float, loss_m: float) -> float:
     adj = distance_km + (gain_m / CLIMB_EQ_M_PER_KM) - (loss_m / DESCENT_EQ_M_PER_KM)
-    return max(distance_km * 0.85, adj)  # never credit below 85% of real distance
+    return max(distance_km * 0.85, adj)
 
 
 def pace_sec_per_km_from_string(pace: str) -> int:
-    """Accept m:ss or mm:ss per km."""
     pace = pace.strip()
     if ":" not in pace:
         raise ValueError("pace must be m:ss")
@@ -233,7 +226,6 @@ def format_pace(sec_per_km: float) -> str:
 
 
 def parse_finish_time(t: str) -> int:
-    """Accept H:MM:SS or M:SS or HH:MM:SS."""
     t = t.strip()
     parts = [int(p) for p in t.split(":")]
     if len(parts) == 2:
@@ -245,7 +237,7 @@ def parse_finish_time(t: str) -> int:
     if m >= 60 or s >= 60 or h < 0:
         raise ValueError("invalid time")
     total = h * 3600 + m * 60 + s
-    if total < 5400 or total > 36000:  # 1:30 to 10:00
+    if total < 5400 or total > 36000:
         raise ValueError("finish time out of sane range")
     return total
 
@@ -294,13 +286,11 @@ def api_calculate(
         else:
             raise HTTPException(status_code=400, detail="provide target_pace or pace_sec")
         finish_sec = eq * flat_pace
-        clock_pace = finish_sec / dist  # average pace on course distance
-        # Per-km adjusted times using local grade
+        clock_pace = finish_sec / dist
         split_times = []
         cum = 0.0
         for sp in c["splits"]:
             seg_km = 1.0 if not sp.get("partial") else (dist - math.floor(dist))
-            # local climb-equivalent for this km
             g = max(0.0, sp["delta_m"])
             l = max(0.0, -sp["delta_m"])
             seg_eq = equivalent_flat_km(seg_km, g, l)
@@ -314,8 +304,14 @@ def api_calculate(
                     "split_pace": format_pace(seg_sec / seg_km),
                     "split_time": format_hms(seg_sec),
                     "cum_time": format_hms(cum),
+                    "cum_sec": int(round(cum)),
                 }
             )
+        # Canonical finish = sum of segment times so last cum_time matches hero finish.
+        finish_sec = cum
+        clock_pace = finish_sec / dist
+        if split_times:
+            split_times[-1]["cum_time"] = format_hms(finish_sec)
         return {
             "mode": "pace",
             "model": MODEL_NAME,
@@ -336,7 +332,6 @@ def api_calculate(
             "splits": split_times,
         }
 
-    # mode == finish
     if not target_finish:
         raise HTTPException(status_code=400, detail="provide target_finish")
     try:
@@ -364,6 +359,9 @@ def api_calculate(
                 "cum_time": format_hms(cum),
             }
         )
+    if split_times:
+        split_times[-1]["cum_time"] = format_hms(finish_sec)
+        split_times[-1]["cum_sec"] = int(round(finish_sec))
     return {
         "mode": "finish",
         "model": MODEL_NAME,
