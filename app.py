@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parent
 GPX_PATH = ROOT / "data" / "ladakh-marathon-full.gpx"
 STATIC = ROOT / "static"
 
+from inflate_gpx import ensure_full_gpx as _ensure_full_gpx
+
 CLIMB_EQ_M_PER_KM = 100.0
 DESCENT_EQ_M_PER_KM = 100.0 / 0.3
 MODEL_NAME = "Naismith-inspired climb-equivalent ( +1 km flat per 100 m gain; -0.3 km per 100 m drop )"
@@ -156,7 +158,7 @@ def parse_gpx(path: Path) -> dict[str, Any]:
     min_ele = min(smooth_eles)
     max_ele = max(smooth_eles)
     return {
-        "name": "Ladakh Marathon — Full Marathon",
+        "name": "Ladakh Marathon - Full Marathon",
         "race_date": "2026-09-13",
         "location": "Leh, Ladakh (~11,500 ft)",
         "distance_m": round(dist_m[-1], 1),
@@ -186,7 +188,7 @@ def parse_gpx(path: Path) -> dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def course() -> dict[str, Any]:
-    return parse_gpx(GPX_PATH)
+    return parse_gpx(_ensure_full_gpx())
 
 
 def equivalent_flat_km(distance_km: float, gain_m: float, loss_m: float) -> float:
@@ -307,7 +309,6 @@ def api_calculate(
                     "cum_sec": int(round(cum)),
                 }
             )
-        # Canonical finish = sum of segment times so last cum_time matches hero finish.
         finish_sec = cum
         clock_pace = finish_sec / dist
         if split_times:
@@ -326,7 +327,7 @@ def api_calculate(
             "avg_clock_pace": format_pace(clock_pace),
             "effort_note": (
                 f"At {format_pace(flat_pace)}/km flat-equivalent effort, course plays like "
-                f"{eq:.2f} km → finish ~{format_hms(finish_sec)} "
+                f"{eq:.2f} km -> finish ~{format_hms(finish_sec)} "
                 f"(clock avg {format_pace(clock_pace)}/km)."
             ),
             "splits": split_times,
@@ -377,7 +378,7 @@ def api_calculate(
         "effort_note": (
             f"To finish in {format_hms(finish_sec)} you need ~{format_pace(flat_pace)}/km "
             f"flat-equivalent effort (clock avg {format_pace(clock_pace)}/km on "
-            f"{dist:.2f} km ≈ {eq:.2f} km grade-adjusted)."
+            f"{dist:.2f} km ~ {eq:.2f} km grade-adjusted)."
         ),
         "splits": split_times,
     }
