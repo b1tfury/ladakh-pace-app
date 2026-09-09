@@ -1,54 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<title>Ladakh Pace</title>
-<link rel="stylesheet" href="/static/styles.css"/>
-<script src="/static/app.js" defer></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0e141c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="description" content="Ladakh Marathon pace planner — finish time and push/pull guidance from your target pace." />
+  <title>Ladakh Pace · Marathon</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
-<div class="bg-glow"></div>
-<header class="top">
-<p class="eyebrow">Ladakh Marathon · 13 Sep 2026</p>
-<h1>Pace &amp; Elevation</h1>
-<p class="sub" id="subtitle">Full course</p>
-</header>
-<main>
-<section class="card">
-<div class="card-head"><h2>Course</h2><span class="chip" id="elev-chip">...</span></div>
-<div class="stats" id="stats"></div>
-<p class="hint" id="source-hint"></p>
-</section>
-<section class="card">
-<div class="card-head"><h2>Elevation</h2></div>
-<div class="chart-wrap"><canvas id="elevChart" height="180"></canvas></div>
-</section>
-<section class="card">
-<div class="card-head"><h2>Calculator</h2><span class="chip">Naismith</span></div>
-<div class="tabs">
-<button type="button" class="tab active" id="tab-pace">Pace to time</button>
-<button type="button" class="tab" id="tab-finish">Time to pace</button>
-</div>
-<div id="pane-pace" class="pane">
-<label class="field"><span>Flat-equivalent pace</span>
-<div class="row">
-<input type="range" id="pace-slider" min="240" max="720" step="5" value="420"/>
-<strong id="pace-label">7:00</strong><span class="unit">/km</span>
-</div></label></div>
-<div id="pane-finish" class="pane hidden">
-<label class="field"><span>Target finish</span>
-<input type="text" id="finish-input" value="5:45:00"/>
-</label></div>
-<button type="button" class="btn" id="calc-btn">Calculate</button>
-<div class="result" id="result" hidden></div>
-</section>
-<section class="card" id="splits-card" hidden>
-<div class="card-head"><h2>Km splits</h2></div>
-<div class="table-wrap"><table id="splits-table">
-<thead><tr><th>Km</th><th>dElev</th><th>Split</th><th>Cum</th></tr></thead>
-<tbody></tbody></table></div>
-</section>
-<section class="footnotes"><h2>Notes</h2><p id="model-note"></p><p>Estimates only. Finish healthy.</p></section>
-</main>
-<footer class="foot">Ladakh pace</footer>
-</body></html>
+  <div class="bg" aria-hidden="true"></div>
+
+  <header class="header">
+    <p class="eyebrow">Ladakh Marathon · Sun 13 Sep</p>
+    <h1>Pace planner</h1>
+    <p class="sub" id="subtitle">Leh · loading course…</p>
+  </header>
+
+  <main class="main">
+    <section class="card" aria-labelledby="course-heading">
+      <div class="card-head">
+        <h2 id="course-heading">Course</h2>
+        <span class="chip" id="elev-chip">—</span>
+      </div>
+      <div class="chips" id="stats" role="list"></div>
+      <details class="source-disclosure">
+        <summary class="tactile">Course source</summary>
+        <p id="source-hint" class="source-body"></p>
+      </details>
+    </section>
+
+    <section class="card" aria-labelledby="elev-heading">
+      <div class="card-head">
+        <h2 id="elev-heading">Elevation</h2>
+        <span class="legend">
+          <span class="leg push">push</span>
+          <span class="leg hold">hold</span>
+          <span class="leg pull">pull</span>
+        </span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="elevChart" role="img" aria-label="Elevation profile with push and pull zones"></canvas>
+      </div>
+      <p class="chart-hint" id="elev-range">Zones update with your pace</p>
+    </section>
+
+    <section class="card calc-card" aria-labelledby="pace-heading">
+      <div class="card-head">
+        <h2 id="pace-heading">Your pace</h2>
+        <span class="chip soft">flat effort</span>
+      </div>
+
+      <div class="pace-readout">
+        <span class="pace-label-text">Target run pace</span>
+        <div class="pace-big" aria-live="polite">
+          <strong id="pace-label">7:00</strong>
+          <span class="unit">/km</span>
+        </div>
+      </div>
+
+      <label class="slider-field" for="pace-slider">
+        <input
+          type="range"
+          id="pace-slider"
+          min="240"
+          max="720"
+          step="5"
+          value="420"
+          aria-valuemin="240"
+          aria-valuemax="720"
+          aria-valuenow="420"
+          aria-valuetext="7 minutes per kilometre"
+        />
+        <div class="slider-ends"><span>4:00</span><span>12:00</span></div>
+      </label>
+
+      <div class="result" id="result" aria-live="polite">
+        <p class="result-placeholder">Dial your pace…</p>
+      </div>
+    </section>
+
+    <section class="card" id="guidance-card" hidden>
+      <div class="card-head">
+        <h2>Segment guidance</h2>
+        <button type="button" class="ghost tactile" id="guidance-toggle" hidden>Show all</button>
+      </div>
+      <ul class="guidance" id="guidance-list"></ul>
+    </section>
+
+    <section class="card" id="splits-card" hidden>
+      <div class="card-head">
+        <h2>Km splits</h2>
+        <button type="button" class="ghost tactile" id="splits-toggle" hidden>Show all</button>
+      </div>
+      <div class="table-wrap">
+        <table id="splits-table">
+          <thead>
+            <tr>
+              <th scope="col">Km</th>
+              <th scope="col">Δ elev</th>
+              <th scope="col">Cue</th>
+              <th scope="col">Split</th>
+              <th scope="col">Cum</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="notes">
+      <h2>Notes</h2>
+      <p id="model-note"></p>
+      <p>Push on gentle downs, ease on climbs — keep effort steady. Estimates only; finish healthy.</p>
+    </section>
+  </main>
+
+  <footer class="foot">Ladakh Pace · calm race-day tool</footer>
+</body>
+</html>
