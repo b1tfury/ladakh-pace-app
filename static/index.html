@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Ladakh Pace</title>
+<link rel="stylesheet" href="/static/styles.css"/>
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<div class="bg-glow"></div>
+<header class="top">
+<p class="eyebrow">Ladakh Marathon · 13 Sep 2026</p>
+<h1>Pace &amp; Elevation</h1>
+<p class="sub" id="subtitle">Full course</p>
+</header>
+<main>
+<section class="card">
+<div class="card-head"><h2>Course</h2><span class="chip" id="elev-chip">...</span></div>
+<div class="stats" id="stats"></div>
+<p class="hint" id="source-hint"></p>
+</section>
+<section class="card">
+<div class="card-head"><h2>Elevation</h2></div>
+<div class="chart-wrap"><canvas id="elevChart" height="180"></canvas></div>
+</section>
+<section class="card">
+<div class="card-head"><h2>Calculator</h2><span class="chip">Naismith</span></div>
+<div class="tabs">
+<button type="button" class="tab active" id="tab-pace">Pace to time</button>
+<button type="button" class="tab" id="tab-finish">Time to pace</button>
+</div>
+<div id="pane-pace" class="pane">
+<label class="field"><span>Flat-equivalent pace</span>
+<div class="row">
+<input type="range" id="pace-slider" min="240" max="720" step="5" value="420"/>
+<strong id="pace-label">7:00</strong><span class="unit">/km</span>
+</div></label></div>
+<div id="pane-finish" class="pane hidden">
+<label class="field"><span>Target finish</span>
+<input type="text" id="finish-input" value="5:45:00"/>
+</label></div>
+<button type="button" class="btn" id="calc-btn">Calculate</button>
+<div class="result" id="result" hidden></div>
+</section>
+<section class="card" id="splits-card" hidden>
+<div class="card-head"><h2>Km splits</h2></div>
+<div class="table-wrap"><table id="splits-table">
+<thead><tr><th>Km</th><th>dElev</th><th>Split</th><th>Cum</th></tr></thead>
+<tbody></tbody></table></div>
+</section>
+<section class="footnotes"><h2>Notes</h2><p id="model-note"></p><p>Estimates only. Finish healthy.</p></section>
+</main>
+<footer class="foot">Ladakh pace</footer>
+</body></html>
